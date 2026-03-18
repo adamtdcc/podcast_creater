@@ -1,0 +1,9 @@
+__pycache__/
+.venv/
+downloads/
+log/
+youtube_profile/
+podcast.sqlite
+yt-dlp.exe
+it_simple.xml
+.env
