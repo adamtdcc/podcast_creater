@@ -303,6 +303,8 @@ def generate_rss():
             # 處理描述
             description = info if info else title
             description = description.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            if org_link:
+                description = f"{org_link}\n{description}"
 
             # 處理標題中的特殊字元
             safe_title = title.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
