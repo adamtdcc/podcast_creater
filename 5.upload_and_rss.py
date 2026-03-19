@@ -9,7 +9,7 @@ import uuid
 from dotenv import load_dotenv
 from util import init_logger, AUDIO_DIR, THUMBNAIL_DIR, DB_PATH, ProcessStatus
 
-load_dotenv()
+load_dotenv(Path(__file__).parent / '.env')
 logger = init_logger("youtube_download2")
 
 # 設定
