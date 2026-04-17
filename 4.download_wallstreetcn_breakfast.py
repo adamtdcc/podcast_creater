@@ -1,3 +1,4 @@
+import os
 import re
 import sqlite3
 import xml.etree.ElementTree as ET
@@ -6,7 +7,7 @@ from email.utils import parsedate_to_datetime
 
 import requests
 
-from util import DB_PATH, ProcessStatus, init_logger
+from util import AUDIO_DIR, DB_PATH, ProcessStatus, init_logger
 
 logger = init_logger(__name__)
 
@@ -99,7 +100,31 @@ def get_wallstreet_breakfast_audio(article_id: str):
     return article_data.get("audio_uri")
 
 
-def write_to_db(mp3_url: str, title: str, info: str, created_at: str):
+def download_mp3(mp3_url: str, filename: str) -> str:
+    """下載 MP3 檔案到 AUDIO_DIR，回傳完整路徑。"""
+    os.makedirs(AUDIO_DIR, exist_ok=True)
+    filepath = os.path.join(AUDIO_DIR, filename)
+
+    if os.path.exists(filepath):
+        logger.info(f"檔案已存在，跳過下載: {filepath}")
+        return filepath
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    }
+    resp = requests.get(mp3_url, headers=headers, timeout=120, stream=True)
+    resp.raise_for_status()
+
+    with open(filepath, "wb") as f:
+        for chunk in resp.iter_content(chunk_size=8192):
+            f.write(chunk)
+
+    logger.info(f"✓ 下載完成: {filepath}")
+    return filepath
+
+
+def write_to_db(video_id: str, title: str, info: str, created_at: str):
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     conn = sqlite3.connect(DB_PATH)
 
@@ -112,14 +137,14 @@ def write_to_db(mp3_url: str, title: str, info: str, created_at: str):
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''',
             (
-                mp3_url,  # video_id = MP3 連結
+                video_id,  # video_id = 下載後的檔名
                 DOMAIN,
                 CHANNEL_NAME,
                 title,
                 info or "",
                 created_at,
                 now,
-                ProcessStatus.UPLOAD_PODSCAST_OK.value,
+                ProcessStatus.WAIT_UPLOAD_PODSCAST_SERVER.value,
                 'mp3',
             ),
         )
@@ -141,8 +166,14 @@ def main():
             logger.error("未能取得 MP3 連結")
             return 1
 
+        # 從 created_at 產生檔名 wallstreet-yyyymmdd.mp3
+        date_str = datetime.strptime(item["created_at"], '%Y-%m-%d %H:%M:%S').strftime('%Y%m%d')
+        filename = f"wallstreet-{date_str}.mp3"
+
+        download_mp3(mp3_url, filename)
+
         inserted = write_to_db(
-            mp3_url=mp3_url,
+            video_id=f"wallstreet-{date_str}",
             title=item["title"],
             info="",
             created_at=item["created_at"],
