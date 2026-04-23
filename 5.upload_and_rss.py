@@ -248,10 +248,12 @@ def youtube_video_info(video_id):
     return org_link, thumbnail_url, audio_url, file_size, duration
 
 def redirect_video_info(video_id):
-    """取得 YouTube 影片的相關資訊"""
-    file_size = 50000000 
-    duration = 3600
-    audio_url = video_id
+    """取得 redirect 影片的相關資訊，這裡假設 info 欄位存有原始連結"""
+    audio_path = os.path.join(AUDIO_DIR, f"{video_id}.mp3")
+    file_size = get_file_size(audio_path)
+    duration = get_audio_duration(audio_path)
+    
+    audio_url = f"{R2_PUBLIC_URL}/{video_id}.mp3"
     thumbnail_url = ""
     org_link = ""
     return org_link, thumbnail_url, audio_url, file_size, duration
